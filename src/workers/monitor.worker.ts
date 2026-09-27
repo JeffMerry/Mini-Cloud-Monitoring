@@ -3,7 +3,8 @@ import { createMonitorCheck, getLastMonitorCheck } from "../repositories/monitor
 import { checkHttpEndpointWithRetry } from "../services/http-checker.service.js";
 import { createIncident , getOpenIncident, resolveIncident} from "../repositories/incident.repository.js";
 import type { Monitor } from "../types/monitor.js";
-
+import { sendTelegramMessage } from "../services/telegram.service.js";
+import { createNotificationLog , hasNotificationBeenSent} from "../repositories/notification.repository.js";
 
 async function checkSingleMonitor(monitor: Monitor) {
   try {
@@ -41,34 +42,134 @@ async function checkSingleMonitor(monitor: Monitor) {
       );
     }
 
-    if (
+   if (
       currentStatus === "DOWN" &&
       previousStatus !== "DOWN"
-    ) {
-      const incident = await createIncident({
-        monitorId: monitor.id,
-        reason: result.errorMessage,
-      });
+      ) {
+        const existingIncident = await getOpenIncident(
+          monitor.id
+        );
 
-      console.log(
-        `Incident created for ${monitor.name}: #${incident.id}`
-      );
-    }
+        if (!existingIncident) {
+          const incident = await createIncident({
+            monitorId: monitor.id,
+            reason: result.errorMessage,
+          });
 
-    if (
+          console.log(
+            `Incident created for ${monitor.name}: #${incident.id}`
+          );
+
+          const alreadySent = await hasNotificationBeenSent(
+            incident.id,
+            "DOWN"
+          );
+
+          if (!alreadySent) {
+            const message = [
+              "🔴 Service Down",
+              "",
+              monitor.name,
+              "",
+              "Status: DOWN",
+              `Reason: ${result.errorMessage ?? "Unknown error"}`,
+              `Time: ${new Date().toISOString()}`,
+            ].join("\n");
+
+            try {
+              await sendTelegramMessage(message);
+
+              await createNotificationLog({
+                monitorId: monitor.id,
+                incidentId: incident.id,
+                channel: "TELEGRAM",
+                type: "DOWN",
+              });
+
+              console.log(
+                `Telegram DOWN notification sent for ${monitor.name}`
+              );
+            } catch (error) {
+              console.error(
+                `Failed to send DOWN notification for ${monitor.name}:`,
+                error
+              );
+            }
+          }
+
+          console.log(
+            `Telegram DOWN notification sent for ${monitor.name}`
+          );
+        } else {
+          console.log(
+            `Open incident already exists for ${monitor.name}: #${existingIncident.id}`
+          );
+        }
+      }
+
+   if (
       previousStatus === "DOWN" &&
       currentStatus === "UP"
     ) {
-      const openIncident =
-        await getOpenIncident(monitor.id);
+      const openIncident = await getOpenIncident(monitor.id);
 
       if (openIncident) {
-        const resolvedIncident =
-          await resolveIncident(openIncident.id);
+        const resolvedIncident = await resolveIncident(
+          openIncident.id
+        );
 
         console.log(
           `Incident resolved for ${monitor.name}: #${resolvedIncident.id}`
         );
+        
+        const alreadySent = await hasNotificationBeenSent(
+          resolvedIncident.id,
+          "RECOVERY"
+        );
+
+        if (!alreadySent) {
+          const startedAt =
+            new Date(resolvedIncident.started_at).getTime();
+
+          const resolvedAt =
+            new Date(resolvedIncident.resolved_at).getTime();
+
+          const downtimeSeconds = Math.floor(
+            (resolvedAt - startedAt) / 1000
+          );
+
+          const message = [
+            "🟢 Service Recovered",
+            "",
+            monitor.name,
+            "",
+            "Status: UP",
+            `Downtime: ${downtimeSeconds} seconds`,
+            `Current Response Time: ${result.responseTimeMs ?? "-"} ms`,
+            `Time: ${new Date().toISOString()}`,
+          ].join("\n");
+
+          try {
+            await sendTelegramMessage(message);
+
+            await createNotificationLog({
+              monitorId: monitor.id,
+              incidentId: resolvedIncident.id,
+              channel: "TELEGRAM",
+              type: "RECOVERY",
+            });
+
+            console.log(
+              `Telegram RECOVERY notification sent for ${monitor.name}`
+            );
+          } catch (error) {
+            console.error(
+              `Failed to send RECOVERY notification for ${monitor.name}:`,
+              error
+            );
+          }
+        }
+
       }
     }
 
