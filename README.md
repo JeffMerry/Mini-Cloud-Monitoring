@@ -2,14 +2,30 @@
 
 A lightweight full-stack HTTP monitoring dashboard for tracking service availability, response time, and incidents. Create a monitor for an endpoint, inspect its health over time, and receive Telegram alerts when the service goes down or recovers.
 
-## Screenshots
-
-<p align="center">
-  <img src="./docs/images/dashboard.png" alt="Dashboard showing an overview of monitored services" width="49%" />
-  <img src="./docs/images/monitor-detail.png" alt="Monitor detail page with uptime, response-time chart, and incident history" width="49%" />
+<p>
+  <img src="https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white" alt="Next.js 16" />
+  <img src="https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white" alt="React 19" />
+  <img src="https://img.shields.io/badge/Express-5-000000?logo=express&logoColor=white" alt="Express 5" />
+  <img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white" alt="PostgreSQL" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
 </p>
 
-> Add the supplied screenshots as `docs/images/dashboard.png` and `docs/images/monitor-detail.png`. See [docs/images/README.md](./docs/images/README.md) for the required filenames.
+## Quick Start
+
+1. Configure the backend and frontend environment files described in [Environment Variables](#environment-variables).
+2. Prepare PostgreSQL and apply the required schema. See [Prepare PostgreSQL](#1-prepare-postgresql).
+3. Run `npm install`, then `npm run dev`, in both `backend/` and `frontend/`.
+4. Open `http://localhost:3000`.
+
+## Screenshots
+
+### Dashboard
+
+[<img src="./docs/images/dashboard.png" alt="Dashboard showing an overview of monitored services" width="100%" />](./docs/images/dashboard.png)
+
+### Monitor Detail
+
+[<img src="./docs/images/monitor-detail.png" alt="Monitor detail page with uptime, response-time chart, and incident history" width="100%" />](./docs/images/monitor-detail.png)
 
 ## Features
 
@@ -24,23 +40,44 @@ A lightweight full-stack HTTP monitoring dashboard for tracking service availabi
 
 ## How It Works
 
-```text
-Next.js dashboard
-        |
-        v
-Express API ---------------------> PostgreSQL
-        |                              |
-        |                              +-- monitors
-        |                              +-- monitor_checks
-        |                              +-- incidents
-        |                              +-- notification_logs
-        v
-node-cron scheduler (every minute)
-        |
-        v
-HTTP checks with retry ----------> Monitored services
-        |
-        +-- Status change -------> Telegram Bot API
+```mermaid
+flowchart LR
+    U[User]
+
+    subgraph Client
+        F[Next.js Dashboard]
+    end
+
+    subgraph Backend
+        B[Express API]
+        S[node-cron Scheduler<br/>Every minute]
+        W[Monitoring Worker]
+        B --> S --> W
+    end
+
+    D[(PostgreSQL)]
+
+    subgraph External Services
+        M[Monitored Service]
+        T[Telegram Bot API]
+    end
+
+    U --> F
+    F -->|REST API| B
+    B -->|Read and write monitor data| D
+    W -->|Load monitors and save results| D
+    W -->|HTTP check with retry| M
+    W -->|Outage or recovery event| T
+
+    classDef client fill:#0f172a,stroke:#38bdf8,color:#f8fafc
+    classDef backend fill:#172554,stroke:#60a5fa,color:#f8fafc
+    classDef database fill:#3f1d2e,stroke:#f472b6,color:#fdf2f8
+    classDef external fill:#064e3b,stroke:#34d399,color:#ecfdf5
+
+    class F client
+    class B,S,W backend
+    class D database
+    class M,T external
 ```
 
 1. The backend runs one monitoring cycle when it starts, then schedules a cycle every minute.
@@ -183,6 +220,33 @@ POST /api/monitors
   "method": "GET",
   "interval_seconds": 60,
   "timeout_ms": 5000
+}
+```
+
+### Dashboard overview response
+
+```json
+GET /api/monitors/overview
+
+{
+  "summary": {
+    "total": 2,
+    "up": 2,
+    "down": 0,
+    "inactive": 0,
+    "unknown": 0
+  },
+  "monitors": [
+    {
+      "id": "monitor-id",
+      "name": "Example API",
+      "url": "https://example.com/health",
+      "is_active": true,
+      "current_status": "UP",
+      "response_time_ms": 120,
+      "last_checked_at": "2026-09-29T12:00:00.000Z"
+    }
+  ]
 }
 ```
 
