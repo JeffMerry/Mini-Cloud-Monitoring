@@ -48,5 +48,5 @@ export async function hasNotificationBeenSent(
     [incidentId, type]
   );
 
-  return result.rowCount > 0;
+  return (result.rowCount ?? 0) > 0;
 }

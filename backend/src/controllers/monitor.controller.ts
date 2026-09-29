@@ -9,6 +9,8 @@ import {
   getIncidentsByMonitor,
 } from "../repositories/incident.repository.js";
 
+type MonitorParams = { id: string };
+
 export async function getMonitors(
     req:Request,
     res:Response,
@@ -23,7 +25,7 @@ export async function getMonitors(
 }
 
 export async function getMonitor(
-  req: Request,
+  req: Request<MonitorParams>,
   res: Response,
   next: NextFunction
 ) {
@@ -118,7 +120,7 @@ export async function createMonitorHandler(
 }
 
 export async function updateMonitorHandler(
-  req: Request,
+  req: Request<MonitorParams>,
   res: Response,
   next: NextFunction
 ) {
@@ -221,7 +223,7 @@ export async function updateMonitorHandler(
 }
 
 export async function deleteMonitorHandler(
-  req: Request,
+  req: Request<MonitorParams>,
   res: Response,
   next: NextFunction
 ) {
@@ -246,7 +248,7 @@ export async function deleteMonitorHandler(
 }
 
 export async function checkMonitorHandler(
-  req: Request,
+  req: Request<MonitorParams>,
   res: Response,
   next: NextFunction
 ) {
@@ -295,7 +297,7 @@ export async function checkMonitorHandler(
 }
 
 export async function getMonitorChecksHandler(
-  req: Request,
+  req: Request<MonitorParams>,
   res: Response,
   next: NextFunction
 ) {
@@ -359,7 +361,7 @@ export async function getMonitorChecksHandler(
 
 
 export async function getMonitorSummaryHandler(
-  req: Request,
+  req: Request<MonitorParams>,
   res: Response,
   next: NextFunction
 ) {
@@ -399,7 +401,7 @@ export async function getMonitorSummaryHandler(
 }
 
 export async function getResponseTimeHistoryHandler(
-  req: Request,
+  req: Request<MonitorParams>,
   res: Response,
   next: NextFunction
 ) {
@@ -448,7 +450,7 @@ export async function getResponseTimeHistoryHandler(
 
 
 export async function getMonitorIncidentsHandler(
-  req: Request,
+  req: Request<MonitorParams>,
   res: Response,
   next: NextFunction
 ) {
