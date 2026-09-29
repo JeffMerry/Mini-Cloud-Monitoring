@@ -41,9 +41,13 @@ export default function ResponseTimeChart({ data }: Props) {
           <YAxis unit=" ms" />
 
           <Tooltip
-            labelFormatter={(value) =>
-              new Date(value).toLocaleString()
-            }
+            labelFormatter={(value) => {
+              if (typeof value !== "string" && typeof value !== "number") {
+                return "";
+              }
+
+              return new Date(value).toLocaleString();
+            }}
           />
 
           <Line
